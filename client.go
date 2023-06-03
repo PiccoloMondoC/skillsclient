@@ -1,4 +1,3 @@
-// sky-skills/pkg/clientlib/skillsclient/skillsclient.go
 package skillsclient
 
 import (
