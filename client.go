@@ -1,3 +1,4 @@
+// sky-skills/pkg/clientlib/skillsclient/skillsclient.go
 package skillsclient
 
 import (
@@ -7,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -28,6 +30,11 @@ type Skill struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type SkillProject struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	ProjectID uuid.UUID `json:"project_id"`
 }
 
 func NewClient(baseURL string, token string, apiKey string, httpClient ...*http.Client) *Client {
@@ -296,6 +303,123 @@ func (c *Client) GetPopularSkills(limit int) ([]Skill, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("error: received status code %d", resp.StatusCode)
+	}
+
+	var skills []Skill
+	err = json.NewDecoder(resp.Body).Decode(&skills)
+	if err != nil {
+		return nil, err
+	}
+
+	return skills, nil
+}
+
+func (c *Client) AssociateSkillWithProject(sp SkillProject) error {
+	body, err := json.Marshal(sp)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/associate_skill", c.BaseURL), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+	req.Header.Add("X-Api-Key", c.ApiKey)
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(resp.Status)
+	}
+
+	return nil
+}
+
+func (c *Client) DisassociateSkillFromProject(sp SkillProject) error {
+	body, err := json.Marshal(sp)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/disassociate_skill", c.BaseURL), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+	req.Header.Add("X-Api-Key", c.ApiKey)
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(resp.Status)
+	}
+
+	return nil
+}
+
+func (c *Client) GetProjectIDsForSkill(skillID uuid.UUID) ([]uuid.UUID, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/get_projects", c.BaseURL), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := url.Values{}
+	q.Add("skill_id", skillID.String())
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+	req.Header.Add("X-Api-Key", c.ApiKey)
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(resp.Status)
+	}
+
+	var projectIDs []uuid.UUID
+	err = json.NewDecoder(resp.Body).Decode(&projectIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return projectIDs, nil
+}
+
+// GetSkillsForProject sends a GET request to the server to get the skills for a particular project.
+func (c *Client) GetSkillsForProject(projectID uuid.UUID) ([]Skill, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/get_skills_for_project", c.BaseURL), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := url.Values{}
+	q.Add("project_id", projectID.String())
+	req.URL.RawQuery = q.Encode()
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+	req.Header.Add("X-Api-Key", c.ApiKey)
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(resp.Status)
 	}
 
 	var skills []Skill
