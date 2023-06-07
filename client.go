@@ -1,3 +1,4 @@
+// sky-skills/pkg/clientlib/skillsclient/skillsclient.go
 package skillsclient
 
 import (
@@ -428,4 +429,38 @@ func (c *Client) GetSkillsForProject(projectID uuid.UUID) ([]Skill, error) {
 	}
 
 	return skills, nil
+}
+
+// GetSkillIDByName retrieves a skill by its name and returns its ID.
+func (c *Client) GetSkillIDByName(name string) (uuid.UUID, error) {
+	encodedName := url.QueryEscape(name)
+	endpoint := fmt.Sprintf("%s/skills?name=%s", c.BaseURL, encodedName)
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+	req.Header.Set("x-api-key", c.ApiKey)
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return uuid.Nil, errors.New(string(bodyBytes))
+	}
+
+	var skill Skill
+	err = json.NewDecoder(resp.Body).Decode(&skill)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return skill.ID, nil
 }
