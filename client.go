@@ -1,4 +1,4 @@
-package skillsclient
+package skillslib
 
 import (
 	"bytes"
